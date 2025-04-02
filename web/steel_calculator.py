@@ -84,67 +84,67 @@ comp_type = st.selectbox("构件类型", [
     "T型钢", "C型钢", "Z型钢", "焊接箱型构件", "节点板", "钢板", "圆钢", "扁钢"
 ])
 quantity = st.number_input("数量", min_value=1, value=1, step=1)
-length = st.number_input("长度 (m)", min_value=0.0, value=12.0)
+length = st.number_input("长度 (m)", min_value=0.0, value=12.0, step=0.5)
 loss_factor = st.number_input("重量调整系数（1.0表示无调整）", min_value=1.0, value=1.05, step=0.01)
 
 if comp_type in ["H型钢", "工字钢", "T型钢"]:
-    height = st.number_input("截面高度 (mm)", min_value=0.0, value=300.0)
-    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=200.0)
-    flange_thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=10.0)
-    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=8.0)
+    height = st.number_input("截面高度 (mm)", min_value=0.0, value=300.0, step=10.0)
+    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=200.0, step=10.0)
+    flange_thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
+    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=8.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'flange_width': flange_width, 'flange_thickness': flange_thickness, 
                  'web_thickness': web_thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "圆钢管":
-    diameter = st.number_input("直径 (mm)", min_value=0.0, value=200.0)
-    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0)
+    diameter = st.number_input("直径 (mm)", min_value=0.0, value=200.0, step=10.0)
+    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'diameter': diameter, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "方钢管":
-    side_length = st.number_input("边长 (mm)", min_value=0.0, value=200.0)
-    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0)
+    side_length = st.number_input("边长 (mm)", min_value=0.0, value=200.0, step=10.0)
+    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'side_length': side_length, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "矩形钢管":
-    height = st.number_input("高度 (mm)", min_value=0.0, value=300.0)
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=200.0)
-    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0)
+    height = st.number_input("高度 (mm)", min_value=0.0, value=300.0, step=10.0)
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=200.0, step=10.0)
+    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'width': width, 'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "角钢":
-    side_length1 = st.number_input("边长1 (mm)", min_value=0.0, value=50.0)
-    side_length2 = st.number_input("边长2 (mm)", min_value=0.0, value=50.0)
-    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=5.0)
+    side_length1 = st.number_input("边长1 (mm)", min_value=0.0, value=50.0, step=10.0)
+    side_length2 = st.number_input("边长2 (mm)", min_value=0.0, value=50.0, step=10.0)
+    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=5.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'side_length1': side_length1, 
                  'side_length2': side_length2, 'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type in ["槽钢", "C型钢", "Z型钢"]:
-    height = st.number_input("高度 (mm)", min_value=0.0, value=200.0)
-    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=100.0)
-    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=8.0)
-    thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=10.0)
+    height = st.number_input("高度 (mm)", min_value=0.0, value=200.0, step=10.0)
+    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=100.0, step=10.0)
+    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=8.0, step=0.1)
+    thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'flange_width': flange_width, 'web_thickness': web_thickness, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "焊接箱型构件":
-    height = st.number_input("高度 (mm)", min_value=0.0, value=400.0)
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=300.0)
-    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=12.0)
-    flange_thickness = st.number_input("翼缘板厚度 (mm)", min_value=0.0, value=16.0)
+    height = st.number_input("高度 (mm)", min_value=0.0, value=400.0, step=10.0)
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=300.0, step=10.0)
+    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=12.0, step=0.1)
+    flange_thickness = st.number_input("翼缘板厚度 (mm)", min_value=0.0, value=16.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'width': width, 'web_thickness': web_thickness, 
                  'flange_thickness': flange_thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type in ["节点板", "钢板"]:
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=300.0)
-    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=10.0)
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=300.0, step=10.0)
+    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'width': width, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "圆钢":
-    diameter = st.number_input("直径 (mm)", min_value=0.0, value=20.0)
+    diameter = st.number_input("直径 (mm)", min_value=0.0, value=20.0, step=10.0)
     comp_data = {'type': comp_type, 'length': length, 'diameter': diameter, 
                  'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "扁钢":
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=50.0)
-    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=10.0)
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=50.0, step=10.0)
+    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'width': width, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 
