@@ -35,7 +35,7 @@ def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
         elif comp['type'] == '焊接箱型构件':
             area = 2 * (comp['height'] / 1000) * (comp['flange_thickness'] / 1000) + \
                    2 * (comp['width'] / 1000 - 2 * (comp['flange_thickness'] / 1000)) * (comp['web_thickness'] / 1000)
-        elif comp['type'] in ['节点板', '钢板']:
+        elif comp['type'] in ["节点板", "钢板"]:
             area = (comp['length']) * (comp['width'] / 1000)  # 长度单位为m，其他为mm
             volume = area * (comp['thickness'] / 1000)
             weight = volume * density * comp['quantity'] * comp['loss_factor']  # 单位：kg
@@ -156,7 +156,32 @@ if st.button("添加构件"):
 if st.session_state.components:
     st.subheader("已添加构件")
     df = pd.DataFrame(st.session_state.components)
-    st.table(df)
+    
+    # 创建中文表头映射
+    column_mapping = {
+        'type': '构件类型',
+        'length': '长度(m)',
+        'quantity': '数量',
+        'loss_factor': '重量调整系数',
+        'height': '高度(mm)',
+        'width': '宽度(mm)',
+        'flange_width': '翼缘宽度(mm)',
+        'flange_thickness': '翼缘厚度(mm)',
+        'web_thickness': '腹板厚度(mm)',
+        'diameter': '直径(mm)',
+        'thickness': '厚度(mm)',
+        'side_length': '边长(mm)',
+        'side_length1': '边长1(mm)',
+        'side_length2': '边长2(mm)'
+    }
+    
+    # 重命名列名
+    df_display = df.copy()
+    for col in df.columns:
+        if col in column_mapping:
+            df_display = df_display.rename(columns={col: column_mapping[col]})
+    
+    st.table(df_display)
 
 # 计算与导出
 if st.button("计算工程量"):
@@ -166,84 +191,56 @@ if st.button("计算工程量"):
         st.subheader("计算结果")
         st.write(f"总重量: {total_weight:.3f} {weight_unit}")
         
-        # 增强结果表格，添加截面参数
-        result_df = pd.DataFrame(details)
-        
-        # 创建一个更详细的DataFrame用于导出
+        # 创建一个包含截面型号的DataFrame
         export_details = []
         for i, comp in enumerate(st.session_state.components):
             detail = details[i].copy()
             
-            # 根据构件类型添加不同的截面参数
+            # 根据构件类型添加截面型号表示
             if comp['type'] in ['H型钢', '工字钢', 'T型钢']:
-                detail.update({
-                    '截面高度(mm)': comp['height'],
-                    '翼缘宽度(mm)': comp['flange_width'],
-                    '翼缘厚度(mm)': comp['flange_thickness'],
-                    '腹板厚度(mm)': comp['web_thickness']
-                })
+                section_code = f"{comp['type'][0]}{'%.0f' % comp['height']}*{'%.0f' % comp['flange_width']}*{'%.1f' % comp['web_thickness']}*{'%.1f' % comp['flange_thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '圆钢管':
-                detail.update({
-                    '直径(mm)': comp['diameter'],
-                    '壁厚(mm)': comp['thickness']
-                })
+                section_code = f"Φ{'%.0f' % comp['diameter']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '方钢管':
-                detail.update({
-                    '边长(mm)': comp['side_length'],
-                    '壁厚(mm)': comp['thickness']
-                })
+                section_code = f"□{'%.0f' % comp['side_length']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '矩形钢管':
-                detail.update({
-                    '高度(mm)': comp['height'],
-                    '宽度(mm)': comp['width'],
-                    '壁厚(mm)': comp['thickness']
-                })
+                section_code = f"□{'%.0f' % comp['height']}×{'%.0f' % comp['width']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '角钢':
-                detail.update({
-                    '边长1(mm)': comp['side_length1'],
-                    '边长2(mm)': comp['side_length2'],
-                    '厚度(mm)': comp['thickness']
-                })
+                section_code = f"∠{'%.0f' % comp['side_length1']}×{'%.0f' % comp['side_length2']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] in ['槽钢', 'C型钢', 'Z型钢']:
-                detail.update({
-                    '高度(mm)': comp['height'],
-                    '翼缘宽度(mm)': comp['flange_width'],
-                    '腹板厚度(mm)': comp['web_thickness'],
-                    '翼缘厚度(mm)': comp['thickness']
-                })
+                prefix = "C" if comp['type'] == '槽钢' else comp['type'][0]
+                section_code = f"{prefix}{'%.0f' % comp['height']}×{'%.0f' % comp['flange_width']}×{'%.1f' % comp['web_thickness']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '焊接箱型构件':
-                detail.update({
-                    '高度(mm)': comp['height'],
-                    '宽度(mm)': comp['width'],
-                    '腹板厚度(mm)': comp['web_thickness'],
-                    '翼缘板厚度(mm)': comp['flange_thickness']
-                })
+                section_code = f"□{'%.0f' % comp['height']}×{'%.0f' % comp['width']}×{'%.1f' % comp['web_thickness']}×{'%.1f' % comp['flange_thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] in ['节点板', '钢板']:
-                detail.update({
-                    '宽度(mm)': comp['width'],
-                    '厚度(mm)': comp['thickness']
-                })
+                section_code = f"PL{'%.0f' % comp['width']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '圆钢':
-                detail.update({
-                    '直径(mm)': comp['diameter']
-                })
+                section_code = f"Φ{'%.0f' % comp['diameter']}"
+                detail.update({'截面型号': section_code})
             elif comp['type'] == '扁钢':
-                detail.update({
-                    '宽度(mm)': comp['width'],
-                    '厚度(mm)': comp['thickness']
-                })
+                section_code = f"FB{'%.0f' % comp['width']}×{'%.1f' % comp['thickness']}"
+                detail.update({'截面型号': section_code})
             
             export_details.append(detail)
         
         export_df = pd.DataFrame(export_details)
         
-        # 显示简化版结果表格
-        st.table(result_df)
+        # 显示结果表格，包含截面型号但不包含具体截面参数
+        result_df_with_section = pd.DataFrame(export_details)[['构件类型', '截面型号', '长度(m)', '数量', '重量调整系数', f'重量({weight_unit})']]
+        st.table(result_df_with_section)
 
-        # 导出为Excel (使用详细版DataFrame)
+        # 导出为Excel (使用相同的简化DataFrame)
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            export_df.to_excel(writer, sheet_name='工程量计算结果', index=False)
+            result_df_with_section.to_excel(writer, sheet_name='工程量计算结果', index=False)
         excel_data = output.getvalue()
         st.download_button(
             label="下载结果为Excel",
