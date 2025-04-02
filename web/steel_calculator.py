@@ -165,13 +165,85 @@ if st.button("计算工程量"):
                                                         weight_unit=weight_unit)
         st.subheader("计算结果")
         st.write(f"总重量: {total_weight:.3f} {weight_unit}")
+        
+        # 增强结果表格，添加截面参数
         result_df = pd.DataFrame(details)
+        
+        # 创建一个更详细的DataFrame用于导出
+        export_details = []
+        for i, comp in enumerate(st.session_state.components):
+            detail = details[i].copy()
+            
+            # 根据构件类型添加不同的截面参数
+            if comp['type'] in ['H型钢', '工字钢', 'T型钢']:
+                detail.update({
+                    '截面高度(mm)': comp['height'],
+                    '翼缘宽度(mm)': comp['flange_width'],
+                    '翼缘厚度(mm)': comp['flange_thickness'],
+                    '腹板厚度(mm)': comp['web_thickness']
+                })
+            elif comp['type'] == '圆钢管':
+                detail.update({
+                    '直径(mm)': comp['diameter'],
+                    '壁厚(mm)': comp['thickness']
+                })
+            elif comp['type'] == '方钢管':
+                detail.update({
+                    '边长(mm)': comp['side_length'],
+                    '壁厚(mm)': comp['thickness']
+                })
+            elif comp['type'] == '矩形钢管':
+                detail.update({
+                    '高度(mm)': comp['height'],
+                    '宽度(mm)': comp['width'],
+                    '壁厚(mm)': comp['thickness']
+                })
+            elif comp['type'] == '角钢':
+                detail.update({
+                    '边长1(mm)': comp['side_length1'],
+                    '边长2(mm)': comp['side_length2'],
+                    '厚度(mm)': comp['thickness']
+                })
+            elif comp['type'] in ['槽钢', 'C型钢', 'Z型钢']:
+                detail.update({
+                    '高度(mm)': comp['height'],
+                    '翼缘宽度(mm)': comp['flange_width'],
+                    '腹板厚度(mm)': comp['web_thickness'],
+                    '翼缘厚度(mm)': comp['thickness']
+                })
+            elif comp['type'] == '焊接箱型构件':
+                detail.update({
+                    '高度(mm)': comp['height'],
+                    '宽度(mm)': comp['width'],
+                    '腹板厚度(mm)': comp['web_thickness'],
+                    '翼缘板厚度(mm)': comp['flange_thickness']
+                })
+            elif comp['type'] in ['节点板', '钢板']:
+                detail.update({
+                    '宽度(mm)': comp['width'],
+                    '厚度(mm)': comp['thickness']
+                })
+            elif comp['type'] == '圆钢':
+                detail.update({
+                    '直径(mm)': comp['diameter']
+                })
+            elif comp['type'] == '扁钢':
+                detail.update({
+                    '宽度(mm)': comp['width'],
+                    '厚度(mm)': comp['thickness']
+                })
+            
+            export_details.append(detail)
+        
+        export_df = pd.DataFrame(export_details)
+        
+        # 显示简化版结果表格
         st.table(result_df)
 
-        # 导出为Excel
+        # 导出为Excel (使用详细版DataFrame)
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            result_df.to_excel(writer, sheet_name='工程量计算结果', index=False)
+            export_df.to_excel(writer, sheet_name='工程量计算结果', index=False)
         excel_data = output.getvalue()
         st.download_button(
             label="下载结果为Excel",
