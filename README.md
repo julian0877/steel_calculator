@@ -1,0 +1,1 @@
+可直接访问https://steelcalculator-vv6v2klx9tjqxrsgy752yk.streamlit.app/使用钢结构工程量计算器，或者按照streamlit_cloud_guide.md指引自行部署
