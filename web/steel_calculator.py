@@ -3,13 +3,11 @@ import pandas as pd
 import math
 from io import BytesIO
 
-# 计算函数
+# 计算函数（保持不变）
 def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
     total_weight = 0
     details = []
-
     for comp in components:
-        # 将mm转换为m
         if comp['type'] in ['H型钢', '工字钢', 'T型钢']:
             area = 2 * (comp['flange_width'] / 1000) * (comp['flange_thickness'] / 1000) + \
                    (comp['web_thickness'] / 1000) * (comp['height'] / 1000 - 2 * (comp['flange_thickness'] / 1000))
@@ -36,11 +34,11 @@ def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
             area = 2 * (comp['height'] / 1000) * (comp['flange_thickness'] / 1000) + \
                    2 * (comp['width'] / 1000 - 2 * (comp['flange_thickness'] / 1000)) * (comp['web_thickness'] / 1000)
         elif comp['type'] in ["节点板", "钢板"]:
-            area = (comp['length']) * (comp['width'] / 1000)  # 长度单位为m，其他为mm
+            area = (comp['length']) * (comp['width'] / 1000)
             volume = area * (comp['thickness'] / 1000)
-            weight = volume * density * comp['quantity'] * comp['loss_factor']  # 单位：kg
+            weight = volume * density * comp['quantity'] * comp['loss_factor']
             if weight_unit == '吨':
-                weight /= 1000  # 转换为吨
+                weight /= 1000
             total_weight += weight
             details.append({
                 '构件类型': comp['type'], '长度(m)': comp['length'], 
@@ -53,137 +51,170 @@ def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
         elif comp['type'] == '扁钢':
             area = (comp['width'] / 1000) * (comp['thickness'] / 1000)
 
-        volume = area * comp['length']  # m³
-        weight = volume * density * comp['quantity'] * comp['loss_factor']  # kg
+        volume = area * comp['length']
+        weight = volume * density * comp['quantity'] * comp['loss_factor']
         if weight_unit == '吨':
-            weight /= 1000  # 转换为吨
+            weight /= 1000
         total_weight += weight
         details.append({
             '构件类型': comp['type'], '长度(m)': comp['length'], 
             '数量': comp['quantity'], '重量调整系数': comp['loss_factor'], 
             f'重量({weight_unit})': weight
         })
-
     return total_weight, details
 
 # Streamlit界面
 st.title("钢结构工程量计算器（全种类版）")
 
-# 初始化构件列表
+# 初始化构件列表和修改状态
 if 'components' not in st.session_state:
     st.session_state.components = []
+if 'edit_index' not in st.session_state:
+    st.session_state.edit_index = None  # 用于追踪当前修改的构件索引
 
 # 全局设置
 st.subheader("全局设置")
 weight_unit = st.selectbox("重量单位", ['吨', 'kg'])
 
 # 输入区
-st.subheader("添加构件")
-comp_type = st.selectbox("构件类型", [
-    "H型钢", "工字钢", "圆钢管", "方钢管", "矩形钢管", "角钢", "槽钢", 
-    "T型钢", "C型钢", "Z型钢", "焊接箱型构件", "节点板", "钢板", "圆钢", "扁钢"
-])
-quantity = st.number_input("数量", min_value=1, value=1, step=1)
-length = st.number_input("长度 (m)", min_value=0.0, value=12.0, step=0.5)
-loss_factor = st.number_input("重量调整系数（1.0表示无调整）", min_value=1.0, value=1.05, step=0.01)
+st.subheader("添加或修改构件")
+comp_type_options = ["H型钢", "工字钢", "圆钢管", "方钢管", "矩形钢管", "角钢", "槽钢", 
+                     "T型钢", "C型钢", "Z型钢", "焊接箱型构件", "节点板", "钢板", "圆钢", "扁钢"]
+comp_type = st.selectbox("构件类型", comp_type_options)
 
+# 如果处于修改模式，加载已有数据
+if st.session_state.edit_index is not None:
+    edit_comp = st.session_state.components[st.session_state.edit_index]
+    quantity = st.number_input("数量", min_value=1, value=edit_comp['quantity'], step=1)
+    length = st.number_input("长度 (m)", min_value=0.0, value=edit_comp['length'], step=0.5)
+    loss_factor = st.number_input("重量调整系数（1.0表示无调整）", min_value=1.0, value=edit_comp['loss_factor'], step=0.01)
+else:
+    quantity = st.number_input("数量", min_value=1, value=1, step=1)
+    length = st.number_input("长度 (m)", min_value=0.0, value=12.0, step=0.5)
+    loss_factor = st.number_input("重量调整系数（1.0表示无调整）", min_value=1.0, value=1.05, step=0.01)
+
+# 根据构件类型显示输入字段，并加载修改数据（如果有）
 if comp_type in ["H型钢", "工字钢", "T型钢"]:
-    height = st.number_input("截面高度 (mm)", min_value=0.0, value=300.0, step=10.0)
-    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=200.0, step=10.0)
-    flange_thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
-    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=8.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'height': 300.0, 'flange_width': 200.0, 'flange_thickness': 10.0, 'web_thickness': 8.0}
+    height = st.number_input("截面高度 (mm)", min_value=0.0, value=defaults['height'], step=10.0)
+    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=defaults['flange_width'], step=10.0)
+    flange_thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=defaults['flange_thickness'], step=0.1)
+    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=defaults['web_thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'flange_width': flange_width, 'flange_thickness': flange_thickness, 
                  'web_thickness': web_thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "圆钢管":
-    diameter = st.number_input("直径 (mm)", min_value=0.0, value=200.0, step=10.0)
-    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'diameter': 200.0, 'thickness': 10.0}
+    diameter = st.number_input("直径 (mm)", min_value=0.0, value=defaults['diameter'], step=10.0)
+    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'diameter': diameter, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "方钢管":
-    side_length = st.number_input("边长 (mm)", min_value=0.0, value=200.0, step=10.0)
-    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'side_length': 200.0, 'thickness': 10.0}
+    side_length = st.number_input("边长 (mm)", min_value=0.0, value=defaults['side_length'], step=10.0)
+    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'side_length': side_length, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "矩形钢管":
-    height = st.number_input("高度 (mm)", min_value=0.0, value=300.0, step=10.0)
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=200.0, step=10.0)
-    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=10.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'height': 300.0, 'width': 200.0, 'thickness': 10.0}
+    height = st.number_input("高度 (mm)", min_value=0.0, value=defaults['height'], step=10.0)
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=defaults['width'], step=10.0)
+    thickness = st.number_input("壁厚 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'width': width, 'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "角钢":
-    side_length1 = st.number_input("边长1 (mm)", min_value=0.0, value=50.0, step=10.0)
-    side_length2 = st.number_input("边长2 (mm)", min_value=0.0, value=50.0, step=10.0)
-    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=5.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'side_length1': 50.0, 'side_length2': 50.0, 'thickness': 5.0}
+    side_length1 = st.number_input("边长1 (mm)", min_value=0.0, value=defaults['side_length1'], step=10.0)
+    side_length2 = st.number_input("边长2 (mm)", min_value=0.0, value=defaults['side_length2'], step=10.0)
+    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'side_length1': side_length1, 
                  'side_length2': side_length2, 'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type in ["槽钢", "C型钢", "Z型钢"]:
-    height = st.number_input("高度 (mm)", min_value=0.0, value=200.0, step=10.0)
-    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=100.0, step=10.0)
-    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=8.0, step=0.1)
-    thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'height': 200.0, 'flange_width': 100.0, 'web_thickness': 8.0, 'thickness': 10.0}
+    height = st.number_input("高度 (mm)", min_value=0.0, value=defaults['height'], step=10.0)
+    flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=defaults['flange_width'], step=10.0)
+    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=defaults['web_thickness'], step=0.1)
+    thickness = st.number_input("翼缘厚度 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'flange_width': flange_width, 'web_thickness': web_thickness, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "焊接箱型构件":
-    height = st.number_input("高度 (mm)", min_value=0.0, value=400.0, step=10.0)
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=300.0, step=10.0)
-    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=12.0, step=0.1)
-    flange_thickness = st.number_input("翼缘板厚度 (mm)", min_value=0.0, value=16.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'height': 400.0, 'width': 300.0, 'web_thickness': 12.0, 'flange_thickness': 16.0}
+    height = st.number_input("高度 (mm)", min_value=0.0, value=defaults['height'], step=10.0)
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=defaults['width'], step=10.0)
+    web_thickness = st.number_input("腹板厚度 (mm)", min_value=0.0, value=defaults['web_thickness'], step=0.1)
+    flange_thickness = st.number_input("翼缘板厚度 (mm)", min_value=0.0, value=defaults['flange_thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'height': height, 
                  'width': width, 'web_thickness': web_thickness, 
                  'flange_thickness': flange_thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type in ["节点板", "钢板"]:
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=300.0, step=10.0)
-    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'width': 300.0, 'thickness': 10.0}
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=defaults['width'], step=10.0)
+    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'width': width, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "圆钢":
-    diameter = st.number_input("直径 (mm)", min_value=0.0, value=20.0, step=10.0)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'diameter': 20.0}
+    diameter = st.number_input("直径 (mm)", min_value=0.0, value=defaults['diameter'], step=10.0)
     comp_data = {'type': comp_type, 'length': length, 'diameter': diameter, 
                  'quantity': quantity, 'loss_factor': loss_factor}
 elif comp_type == "扁钢":
-    width = st.number_input("宽度 (mm)", min_value=0.0, value=50.0, step=10.0)
-    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=10.0, step=0.1)
+    defaults = edit_comp if st.session_state.edit_index is not None else {'width': 50.0, 'thickness': 10.0}
+    width = st.number_input("宽度 (mm)", min_value=0.0, value=defaults['width'], step=10.0)
+    thickness = st.number_input("厚度 (mm)", min_value=0.0, value=defaults['thickness'], step=0.1)
     comp_data = {'type': comp_type, 'length': length, 'width': width, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 
-if st.button("添加构件"):
-    st.session_state.components.append(comp_data)
-    st.success(f"已添加 {comp_type}")
+# 添加或保存按钮
+if st.session_state.edit_index is not None:
+    if st.button("保存修改"):
+        st.session_state.components[st.session_state.edit_index] = comp_data
+        st.session_state.edit_index = None
+        st.success(f"已保存对 {comp_type} 的修改")
+else:
+    if st.button("添加构件"):
+        st.session_state.components.append(comp_data)
+        st.success(f"已添加 {comp_type}")
+
+# 取消修改按钮
+if st.session_state.edit_index is not None:
+    if st.button("取消修改"):
+        st.session_state.edit_index = None
+        st.success("已取消修改")
 
 # 显示已添加的构件
 if st.session_state.components:
     st.subheader("已添加构件")
     df = pd.DataFrame(st.session_state.components)
     
-    # 创建中文表头映射
     column_mapping = {
-        'type': '构件类型',
-        'length': '长度(m)',
-        'quantity': '数量',
-        'loss_factor': '重量调整系数',
-        'height': '高度(mm)',
-        'width': '宽度(mm)',
-        'flange_width': '翼缘宽度(mm)',
-        'flange_thickness': '翼缘厚度(mm)',
-        'web_thickness': '腹板厚度(mm)',
-        'diameter': '直径(mm)',
-        'thickness': '厚度(mm)',
-        'side_length': '边长(mm)',
-        'side_length1': '边长1(mm)',
-        'side_length2': '边长2(mm)'
+        'type': '构件类型', 'length': '长度(m)', 'quantity': '数量', 'loss_factor': '重量调整系数',
+        'height': '高度(mm)', 'width': '宽度(mm)', 'flange_width': '翼缘宽度(mm)', 
+        'flange_thickness': '翼缘厚度(mm)', 'web_thickness': '腹板厚度(mm)', 
+        'diameter': '直径(mm)', 'thickness': '厚度(mm)', 'side_length': '边长(mm)', 
+        'side_length1': '边长1(mm)', 'side_length2': '边长2(mm)'
     }
     
-    # 重命名列名
     df_display = df.copy()
     for col in df.columns:
         if col in column_mapping:
             df_display = df_display.rename(columns={col: column_mapping[col]})
     
+    # 添加操作列
+    for i, row in df_display.iterrows():
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(f"修改 #{i}", key=f"edit_{i}"):
+                st.session_state.edit_index = i
+        with col2:
+            if st.button(f"删除 #{i}", key=f"delete_{i}"):
+                del st.session_state.components[i]
+                st.success(f"已删除构件 #{i}")
+                st.experimental_rerun()  # 刷新页面以更新显示
+    
     st.table(df_display)
 
-# 计算与导出
+# 计算与导出（保持不变）
 if st.button("计算工程量"):
     if st.session_state.components:
         total_weight, details = calculate_steel_quantity(st.session_state.components, 
@@ -191,12 +222,9 @@ if st.button("计算工程量"):
         st.subheader("计算结果")
         st.write(f"总重量: {total_weight:.3f} {weight_unit}")
         
-        # 创建一个包含截面型号的DataFrame
         export_details = []
         for i, comp in enumerate(st.session_state.components):
             detail = details[i].copy()
-            
-            # 根据构件类型添加截面型号表示
             if comp['type'] in ['H型钢', '工字钢', 'T型钢']:
                 section_code = f"{comp['type'][0]}{'%.0f' % comp['height']}*{'%.0f' % comp['flange_width']}*{'%.1f' % comp['web_thickness']}*{'%.1f' % comp['flange_thickness']}"
                 detail.update({'截面型号': section_code})
@@ -228,16 +256,12 @@ if st.button("计算工程量"):
             elif comp['type'] == '扁钢':
                 section_code = f"FB{'%.0f' % comp['width']}×{'%.1f' % comp['thickness']}"
                 detail.update({'截面型号': section_code})
-            
             export_details.append(detail)
         
         export_df = pd.DataFrame(export_details)
-        
-        # 显示结果表格，包含截面型号但不包含具体截面参数
         result_df_with_section = pd.DataFrame(export_details)[['构件类型', '截面型号', '长度(m)', '数量', '重量调整系数', f'重量({weight_unit})']]
         st.table(result_df_with_section)
 
-        # 导出为Excel (使用相同的简化DataFrame)
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             result_df_with_section.to_excel(writer, sheet_name='工程量计算结果', index=False)
@@ -254,4 +278,5 @@ if st.button("计算工程量"):
 # 清空按钮
 if st.button("清空构件"):
     st.session_state.components = []
+    st.session_state.edit_index = None
     st.success("已清空所有构件")
