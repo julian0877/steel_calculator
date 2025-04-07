@@ -3,13 +3,11 @@ import pandas as pd
 import math
 from io import BytesIO
 
-# 计算函数
+# 计算函数（保持不变）
 def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
     total_weight = 0
     details = []
-
     for comp in components:
-        # 将mm转换为m
         if comp['type'] in ['H型钢', '工字钢', 'T型钢']:
             area = 2 * (comp['flange_width'] / 1000) * (comp['flange_thickness'] / 1000) + \
                    (comp['web_thickness'] / 1000) * (comp['height'] / 1000 - 2 * (comp['flange_thickness'] / 1000))
@@ -36,11 +34,11 @@ def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
             area = 2 * (comp['height'] / 1000) * (comp['flange_thickness'] / 1000) + \
                    2 * (comp['width'] / 1000 - 2 * (comp['flange_thickness'] / 1000)) * (comp['web_thickness'] / 1000)
         elif comp['type'] in ["节点板", "钢板"]:
-            area = (comp['length']) * (comp['width'] / 1000)  # 长度单位为m，其他为mm
+            area = (comp['length']) * (comp['width'] / 1000)
             volume = area * (comp['thickness'] / 1000)
-            weight = volume * density * comp['quantity'] * comp['loss_factor']  # 单位：kg
+            weight = volume * density * comp['quantity'] * comp['loss_factor']
             if weight_unit == '吨':
-                weight /= 1000  # 转换为吨
+                weight /= 1000
             total_weight += weight
             details.append({
                 '构件类型': comp['type'], '长度(m)': comp['length'], 
@@ -53,17 +51,16 @@ def calculate_steel_quantity(components, density=7850, weight_unit='吨'):
         elif comp['type'] == '扁钢':
             area = (comp['width'] / 1000) * (comp['thickness'] / 1000)
 
-        volume = area * comp['length']  # m³
-        weight = volume * density * comp['quantity'] * comp['loss_factor']  # kg
+        volume = area * comp['length']
+        weight = volume * density * comp['quantity'] * comp['loss_factor']
         if weight_unit == '吨':
-            weight /= 1000  # 转换为吨
+            weight /= 1000
         total_weight += weight
         details.append({
             '构件类型': comp['type'], '长度(m)': comp['length'], 
             '数量': comp['quantity'], '重量调整系数': comp['loss_factor'], 
             f'重量({weight_unit})': weight
         })
-
     return total_weight, details
 
 # Streamlit界面
@@ -79,14 +76,16 @@ weight_unit = st.selectbox("重量单位", ['吨', 'kg'])
 
 # 输入区
 st.subheader("添加构件")
-comp_type = st.selectbox("构件类型", [
-    "H型钢", "工字钢", "圆钢管", "方钢管", "矩形钢管", "角钢", "槽钢", 
-    "T型钢", "C型钢", "Z型钢", "焊接箱型构件", "节点板", "钢板", "圆钢", "扁钢"
-])
+comp_type_options = ["H型钢", "工字钢", "圆钢管", "方钢管", "矩形钢管", "角钢", "槽钢", 
+                     "T型钢", "C型钢", "Z型钢", "焊接箱型构件", "节点板", "钢板", "圆钢", "扁钢"]
+comp_type = st.selectbox("构件类型", comp_type_options)
+
+# 输入字段
 quantity = st.number_input("数量", min_value=1, value=1, step=1)
 length = st.number_input("长度 (m)", min_value=0.0, value=12.0, step=0.5)
 loss_factor = st.number_input("重量调整系数（1.0表示无调整）", min_value=1.0, value=1.05, step=0.01)
 
+# 根据构件类型显示输入字段
 if comp_type in ["H型钢", "工字钢", "T型钢"]:
     height = st.number_input("截面高度 (mm)", min_value=0.0, value=300.0, step=10.0)
     flange_width = st.number_input("翼缘宽度 (mm)", min_value=0.0, value=200.0, step=10.0)
@@ -148,42 +147,57 @@ elif comp_type == "扁钢":
     comp_data = {'type': comp_type, 'length': length, 'width': width, 
                  'thickness': thickness, 'quantity': quantity, 'loss_factor': loss_factor}
 
+# 添加构件按钮
 if st.button("添加构件"):
     st.session_state.components.append(comp_data)
     st.success(f"已添加 {comp_type}")
 
-# 显示已添加的构件
+# 显示已添加的构件（使用 st.data_editor 实现直接编辑）
 if st.session_state.components:
     st.subheader("已添加构件")
     df = pd.DataFrame(st.session_state.components)
     
-    # 创建中文表头映射
     column_mapping = {
-        'type': '构件类型',
-        'length': '长度(m)',
-        'quantity': '数量',
-        'loss_factor': '重量调整系数',
-        'height': '高度(mm)',
-        'width': '宽度(mm)',
-        'flange_width': '翼缘宽度(mm)',
-        'flange_thickness': '翼缘厚度(mm)',
-        'web_thickness': '腹板厚度(mm)',
-        'diameter': '直径(mm)',
-        'thickness': '厚度(mm)',
-        'side_length': '边长(mm)',
-        'side_length1': '边长1(mm)',
-        'side_length2': '边长2(mm)'
+        'type': '构件类型', 'length': '长度(m)', 'quantity': '数量', 'loss_factor': '重量调整系数',
+        'height': '高度(mm)', 'width': '宽度(mm)', 'flange_width': '翼缘宽度(mm)', 
+        'flange_thickness': '翼缘厚度(mm)', 'web_thickness': '腹板厚度(mm)', 
+        'diameter': '直径(mm)', 'thickness': '厚度(mm)', 'side_length': '边长(mm)', 
+        'side_length1': '边长1(mm)', 'side_length2': '边长2(mm)'
     }
     
-    # 重命名列名
     df_display = df.copy()
     for col in df.columns:
         if col in column_mapping:
             df_display = df_display.rename(columns={col: column_mapping[col]})
     
-    st.table(df_display)
+    # 使用 st.data_editor 实现直接编辑
+    edited_df = st.data_editor(
+        df_display,
+        num_rows="dynamic",
+        key="data_editor",
+        use_container_width=True
+    )
+    
+    # 同步编辑后的数据到 session_state
+    st.session_state.components = edited_df.rename(columns={v: k for k, v in column_mapping.items()}).to_dict('records')
+    
+    # 优化删除功能：支持多选删除
+    selected_rows = st.multiselect(
+        "选择要删除的构件",
+        options=range(len(df_display)),
+        format_func=lambda x: f"构件 #{x}"
+    )
+    
+    if st.button("删除选中构件"):
+        if selected_rows:
+            # 按降序删除，避免索引混乱
+            for i in sorted(selected_rows, reverse=True):
+                del st.session_state.components[i]
+            st.success(f"已删除构件: {selected_rows}")
+        else:
+            st.warning("请先选择要删除的构件！")
 
-# 计算与导出
+# 计算与导出（保持不变）
 if st.button("计算工程量"):
     if st.session_state.components:
         total_weight, details = calculate_steel_quantity(st.session_state.components, 
@@ -191,12 +205,9 @@ if st.button("计算工程量"):
         st.subheader("计算结果")
         st.write(f"总重量: {total_weight:.3f} {weight_unit}")
         
-        # 创建一个包含截面型号的DataFrame
         export_details = []
         for i, comp in enumerate(st.session_state.components):
             detail = details[i].copy()
-            
-            # 根据构件类型添加截面型号表示
             if comp['type'] in ['H型钢', '工字钢', 'T型钢']:
                 section_code = f"{comp['type'][0]}{'%.0f' % comp['height']}*{'%.0f' % comp['flange_width']}*{'%.1f' % comp['web_thickness']}*{'%.1f' % comp['flange_thickness']}"
                 detail.update({'截面型号': section_code})
@@ -228,16 +239,12 @@ if st.button("计算工程量"):
             elif comp['type'] == '扁钢':
                 section_code = f"FB{'%.0f' % comp['width']}×{'%.1f' % comp['thickness']}"
                 detail.update({'截面型号': section_code})
-            
             export_details.append(detail)
         
         export_df = pd.DataFrame(export_details)
-        
-        # 显示结果表格，包含截面型号但不包含具体截面参数
         result_df_with_section = pd.DataFrame(export_details)[['构件类型', '截面型号', '长度(m)', '数量', '重量调整系数', f'重量({weight_unit})']]
         st.table(result_df_with_section)
 
-        # 导出为Excel (使用相同的简化DataFrame)
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             result_df_with_section.to_excel(writer, sheet_name='工程量计算结果', index=False)
